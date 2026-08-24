@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, text
+from sqlalchemy import DateTime, ForeignKey, String, Text, text, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -71,4 +71,15 @@ class Link(Base):
         "LinkClick",
         back_populates="link",
         cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_links_user_created",
+            "user_id",
+            "created_at",
+            postgresql_ops={
+                "created_at": "DESC",
+            },
+        ),
     )

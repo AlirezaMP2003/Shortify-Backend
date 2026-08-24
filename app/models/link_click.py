@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, text
+from sqlalchemy import DateTime, ForeignKey, String, Text, text, Index
 from sqlalchemy.dialects.postgresql import INET, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -67,4 +67,12 @@ class LinkClick(Base):
     link: Mapped["Link"] = relationship(
         "Link",
         back_populates="clicks",
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_link_clicks_link_clicked",
+            "link_id",
+            "clicked_at",
+        ),
     )
