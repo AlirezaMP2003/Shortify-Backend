@@ -1,6 +1,6 @@
 from datetime import datetime
 from uuid import UUID
-
+from enum import Enum
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 
@@ -116,3 +116,29 @@ class LinkResponse(BaseModel):
     status: str
     created_at: datetime
     expires_at: datetime | None
+
+
+class LinkSortOption(str, Enum):
+    NEWEST = "newest"
+    OLDEST = "oldest"
+    MOST_CLICKED = "most-clicked"
+    LEAST_CLICKED = "least-clicked"
+
+
+class LinkListItem(BaseModel):
+    id: UUID
+    short_url: str
+    original_url: str
+    title: str
+    clicks: int
+    status: str
+    created_at: datetime
+    expires_at: datetime | None
+
+
+class LinkListResponse(BaseModel):
+    items: list[LinkListItem]
+    page: int
+    limit: int
+    total: int
+    total_pages: int

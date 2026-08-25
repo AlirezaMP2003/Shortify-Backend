@@ -3,9 +3,9 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-
+from sqlalchemy import func
 from app.core.security import hash_password
-from app.models import Link, User
+from app.models import Link, User, LinkClick
 from app.schemas.link import CreateLinkRequest
 
 
@@ -117,3 +117,64 @@ def build_link_response(
         "created_at": link.created_at,
         "expires_at": link.expires_at,
     }
+
+
+def get_user_links(
+    db: Session,
+    user: User,
+    page: int,
+    limit: int,
+    sort: str,
+) -> tuple[list[dict], int]:
+    offset = (page - 1) * limit
+
+    total = (
+        db.query(func.count(Link.id))
+        .filter(Link.user_id == user.id)
+        .scalar()
+        or 0
+    )
+
+    click_count = func.count(LinkClick.id)
+
+    query = (
+        db.query(
+            Link,
+            click_count.label("clicks"),
+        )
+        .outerjoin(
+            LinkClick,
+            LinkClick.link_id == Link.id,
+        )
+        .filter(Link.user_id == user.id)
+        .group_by(Link.id)
+    )
+
+    if sort == "newest":
+        query = query.order_by(Link.created_at.desc())
+
+    elif sort == "oldest":
+        query = query.order_by(Link.created_at.asc())
+
+    elif sort == "most-clicked":
+        query = query.order_by(click_count.desc())
+
+    elif sort == "least-clicked":
+        query = query.order_by(click_count.asc())
+
+    results = (
+        query
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    items = [
+        build_link_response(
+            link=link,
+            clicks=clicks,
+        )
+        for link, clicks in results
+    ]
+
+    return items, total
