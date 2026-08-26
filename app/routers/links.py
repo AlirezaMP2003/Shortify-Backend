@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -14,12 +16,16 @@ from app.schemas.link import (
     LinkResponse,
     LinkListResponse,
     LinkSortOption,
+    UpdateLinkRequest,
 )
 
 from app.services.link import (
     build_link_response,
     create_link,
+    delete_link,
+    get_user_link,
     get_user_links,
+    update_link,
 )
 
 from app.core.dependencies import get_current_user
@@ -94,3 +100,55 @@ def get_links(
         "total": total,
         "total_pages": total_pages,
     }
+
+
+@router.get(
+    "/{link_id}",
+    response_model=LinkResponse,
+)
+def get_link(
+    link_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_user_link(
+        db=db,
+        user=current_user,
+        link_id=link_id,
+    )
+
+
+@router.patch(
+    "/{link_id}",
+    response_model=LinkResponse,
+)
+def update_link_endpoint(
+    link_id: uuid.UUID,
+    data: UpdateLinkRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return update_link(
+        db=db,
+        user=current_user,
+        link_id=link_id,
+        data=data,
+    )
+
+
+@router.delete(
+    "/{link_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_link_endpoint(
+    link_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    delete_link(
+        db=db,
+        user=current_user,
+        link_id=link_id,
+    )
+
+    return None

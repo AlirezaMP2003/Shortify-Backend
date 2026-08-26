@@ -142,3 +142,11 @@ class LinkListResponse(BaseModel):
     limit: int
     total: int
     total_pages: int
+
+
+class UpdateLinkRequest(BaseModel):
+    original_url: str | None = None
+    title: str | None = Field(default=None, max_length=255)
+    custom_slug: str | None = None
+    expires_at: str | None = None
+    password: str | None = None

@@ -1,3 +1,4 @@
+import uuid
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -6,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.core.security import hash_password
 from app.models import Link, User, LinkClick
-from app.schemas.link import CreateLinkRequest
+from app.schemas.link import CreateLinkRequest, UpdateLinkRequest
 
 
 SLUG_LENGTH = 6
@@ -178,3 +179,145 @@ def get_user_links(
     ]
 
     return items, total
+
+
+def get_user_link(
+    db: Session,
+    user: User,
+    link_id: uuid.UUID,
+) -> dict:
+    result = (
+        db.query(
+            Link,
+            func.count(LinkClick.id).label("clicks"),
+        )
+        .outerjoin(
+            LinkClick,
+            LinkClick.link_id == Link.id,
+        )
+        .filter(
+            Link.id == link_id,
+            Link.user_id == user.id,
+        )
+        .group_by(Link.id)
+        .first()
+    )
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="لینک پیدا نشد.",
+        )
+
+    link, clicks = result
+
+    return build_link_response(
+        link=link,
+        clicks=clicks,
+    )
+
+
+
+def update_link(
+    db: Session,
+    user: User,
+    link_id: uuid.UUID,
+    data: UpdateLinkRequest,
+) -> dict:
+    link = (
+        db.query(Link)
+        .filter(
+            Link.id == link_id,
+            Link.user_id == user.id,
+        )
+        .first()
+    )
+
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="لینک پیدا نشد.",
+        )
+
+    update_data = data.model_dump(
+        exclude_unset=True,
+    )
+
+    if "original_url" in update_data:
+        link.original_url = update_data["original_url"]
+
+    if "title" in update_data:
+        link.title = update_data["title"]
+
+    if "custom_slug" in update_data:
+        new_slug = update_data["custom_slug"]
+
+        if new_slug:
+            existing_link = (
+                db.query(Link)
+                .filter(
+                    Link.slug == new_slug,
+                    Link.id != link.id,
+                )
+                .first()
+            )
+
+            if existing_link:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="این Slug قبلاً استفاده شده است.",
+                )
+
+            link.slug = new_slug
+
+        else:
+            link.slug = generate_unique_slug(db)
+
+    if "expires_at" in update_data:
+        link.expires_at = calculate_expiration(
+            update_data["expires_at"]
+        )
+
+    if "password" in update_data:
+        password = update_data["password"]
+
+        if password:
+            link.password_hash = hash_password(password)
+        else:
+            link.password_hash = None
+
+    link.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(link)
+
+    return get_user_link(
+        db=db,
+        user=user,
+        link_id=link.id,
+    )
+
+
+
+def delete_link(
+    db: Session,
+    user: User,
+    link_id: uuid.UUID,
+) -> None:
+    link = (
+        db.query(Link)
+        .filter(
+            Link.id == link_id,
+            Link.user_id == user.id,
+        )
+        .first()
+    )
+
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="لینک پیدا نشد.",
+        )
+
+    db.delete(link)
+    db.commit()
