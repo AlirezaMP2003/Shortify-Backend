@@ -150,3 +150,29 @@ class UpdateLinkRequest(BaseModel):
     custom_slug: str | None = None
     expires_at: str | None = None
     password: str | None = None
+
+
+class AnalyticsChartItem(BaseModel):
+    date: str
+    clicks: int
+
+
+class AnalyticsBreakdownItem(BaseModel):
+    name: str
+    clicks: int
+
+
+class LinkAnalyticsResponse(BaseModel):
+    short_url: str
+    original_url: str
+
+    total_clicks: int
+    today_clicks: int
+    average_clicks: float
+
+    chart_data: list[AnalyticsChartItem]
+
+    countries: list[AnalyticsBreakdownItem]
+    devices: list[AnalyticsBreakdownItem]
+    browsers: list[AnalyticsBreakdownItem]
+    operating_systems: list[AnalyticsBreakdownItem]

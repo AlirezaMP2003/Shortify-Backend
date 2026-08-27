@@ -1,35 +1,48 @@
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.services.click import (
+    get_country_from_ip,
+    parse_user_agent,
+)
 from app.services.redirect import redirect_link
-
 
 router = APIRouter()
 
 
 @router.get("/{slug}")
-def redirect_to_original_url(
+def redirect_link_endpoint(
     slug: str,
     request: Request,
-    password: str | None = Query(
-        default=None,
-    ),
+    password: str | None = None,
     db: Session = Depends(get_db),
 ):
-    client_ip = None
+    user_agent = request.headers.get("user-agent")
+    referer = request.headers.get("referer")
 
-    if request.client:
-        client_ip = request.client.host
+    user_agent_data = parse_user_agent(user_agent)
+
+    ip_address = (
+        request.client.host
+        if request.client
+        else None
+    )
+
+    country = get_country_from_ip(ip_address)
 
     original_url = redirect_link(
         db=db,
         slug=slug,
         password=password,
-        ip_address=client_ip,
-        user_agent=request.headers.get("user-agent"),
-        referer=request.headers.get("referer"),
+        ip_address=ip_address,
+        country=country,
+        device=user_agent_data["device"],
+        browser=user_agent_data["browser"],
+        os=user_agent_data["os"],
+        user_agent=user_agent,
+        referer=referer,
     )
 
     return RedirectResponse(

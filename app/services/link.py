@@ -321,3 +321,152 @@ def delete_link(
 
     db.delete(link)
     db.commit()
+
+
+def _build_breakdown(
+    db: Session,
+    link_id: uuid.UUID,
+    column,
+) -> list[dict]:
+    rows = (
+        db.query(
+            column.label("name"),
+            func.count(LinkClick.id).label("clicks"),
+        )
+        .filter(
+            LinkClick.link_id == link_id,
+            column.isnot(None),
+        )
+        .group_by(column)
+        .order_by(func.count(LinkClick.id).desc())
+        .all()
+    )
+
+    return [
+        {
+            "name": row.name,
+            "clicks": row.clicks,
+        }
+        for row in rows
+    ]
+
+def get_link_analytics(
+    db: Session,
+    user: User,
+    link_id: uuid.UUID,
+) -> dict:
+    link = (
+        db.query(Link)
+        .filter(
+            Link.id == link_id,
+            Link.user_id == user.id,
+        )
+        .first()
+    )
+
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="لینک پیدا نشد.",
+        )
+
+    total_clicks = (
+        db.query(func.count(LinkClick.id))
+        .filter(LinkClick.link_id == link.id)
+        .scalar()
+        or 0
+    )
+
+    now = datetime.now(timezone.utc)
+
+    start_of_today = now.replace(
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+
+    today_clicks = (
+        db.query(func.count(LinkClick.id))
+        .filter(
+            LinkClick.link_id == link.id,
+            LinkClick.clicked_at >= start_of_today,
+        )
+        .scalar()
+        or 0
+    )
+
+    first_click = (
+        db.query(func.min(LinkClick.clicked_at))
+        .filter(LinkClick.link_id == link.id)
+        .scalar()
+    )
+
+    if first_click is None or total_clicks == 0:
+        average_clicks = 0.0
+    else:
+        first_date = first_click.date()
+        today_date = now.date()
+
+        days = (today_date - first_date).days + 1
+
+        average_clicks = round(
+            total_clicks / days,
+            1,
+        )
+
+    chart_rows = (
+        db.query(
+            func.date(LinkClick.clicked_at).label("date"),
+            func.count(LinkClick.id).label("clicks"),
+        )
+        .filter(LinkClick.link_id == link.id)
+        .group_by(func.date(LinkClick.clicked_at))
+        .order_by(func.date(LinkClick.clicked_at))
+        .all()
+    )
+
+    chart_data = [
+        {
+            "date": row.date.strftime("%Y-%m-%d"),
+            "clicks": row.clicks,
+        }
+        for row in chart_rows
+    ]
+
+    countries = _build_breakdown(
+        db=db,
+        link_id=link.id,
+        column=LinkClick.country,
+    )
+
+    devices = _build_breakdown(
+        db=db,
+        link_id=link.id,
+        column=LinkClick.device,
+    )
+
+    browsers = _build_breakdown(
+        db=db,
+        link_id=link.id,
+        column=LinkClick.browser,
+    )
+
+    operating_systems = _build_breakdown(
+        db=db,
+        link_id=link.id,
+        column=LinkClick.os,
+    )
+
+    return {
+        "short_url": f"shortify.ir/{link.slug}",
+        "original_url": link.original_url,
+        "total_clicks": total_clicks,
+        "today_clicks": today_clicks,
+        "average_clicks": average_clicks,
+        "chart_data": chart_data,
+        "countries": countries,
+        "devices": devices,
+        "browsers": browsers,
+        "operating_systems": operating_systems,
+    }

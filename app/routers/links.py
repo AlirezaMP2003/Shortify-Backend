@@ -17,6 +17,7 @@ from app.schemas.link import (
     LinkListResponse,
     LinkSortOption,
     UpdateLinkRequest,
+    LinkAnalyticsResponse,
 )
 
 from app.services.link import (
@@ -26,6 +27,7 @@ from app.services.link import (
     get_user_link,
     get_user_links,
     update_link,
+    get_link_analytics,
 )
 
 from app.core.dependencies import get_current_user
@@ -152,3 +154,19 @@ def delete_link_endpoint(
     )
 
     return None
+
+
+@router.get(
+    "/{link_id}/analytics",
+    response_model=LinkAnalyticsResponse,
+)
+def get_link_analytics_endpoint(
+    link_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return get_link_analytics(
+        db=db,
+        user=user,
+        link_id=link_id,
+    )
