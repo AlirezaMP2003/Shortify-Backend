@@ -210,3 +210,36 @@ def reset_user_password(
         email,
         None,
     )
+
+
+
+def update_user_profile(
+    db: Session,
+    user: User,
+    name: str,
+    email: str,
+) -> User:
+
+    normalized_email = email.strip().lower()
+
+    existing_user = (
+        db.query(User)
+        .filter(
+            User.email.ilike(normalized_email),
+            User.id != user.id,
+        )
+        .first()
+    )
+
+    if existing_user:
+        raise ValueError(
+            "این ایمیل قبلاً استفاده شده است."
+        )
+
+    user.name = name.strip()
+    user.email = normalized_email
+
+    db.commit()
+    db.refresh(user)
+
+    return user

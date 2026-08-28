@@ -11,6 +11,7 @@ from app.schemas.auth import (
     RegisterRequest,
     ResetPasswordRequest,
     UserResponse,
+    UpdateProfileRequest,
 )
 from app.models import User
 from app.services.auth import (
@@ -20,6 +21,7 @@ from app.services.auth import (
     create_user_token,
     register_user,
     reset_user_password,
+    update_user_profile,
 )
 
 
@@ -110,6 +112,30 @@ def get_me(
     current_user: User = Depends(get_current_user),
 ):
     return current_user
+
+
+@router.patch(
+    "/profile",
+    response_model=UserResponse,
+)
+def update_profile(
+    data: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return update_user_profile(
+            db=db,
+            user=current_user,
+            name=data.name,
+            email=data.email,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        )
 
 
 @router.post(

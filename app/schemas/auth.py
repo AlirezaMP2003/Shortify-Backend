@@ -79,3 +79,12 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str
     user: UserResponse
+
+
+class UpdateProfileRequest(BaseModel):
+    name: str = Field(
+        min_length=2,
+        max_length=100,
+    )
+
+    email: EmailStr
