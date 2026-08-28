@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from app.utils.password import validate_password
 
 from app.core.dependencies import get_current_user, get_db
 from app.schemas.auth import (
@@ -37,6 +38,15 @@ def register(
     data: RegisterRequest,
     db: Session = Depends(get_db),
 ):
+
+    password_error = validate_password(data.password)
+
+    if password_error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=password_error,
+        )
+
     try:
         user = register_user(
             db=db,
@@ -122,6 +132,15 @@ def change_password(
             detail="رمز عبور جدید باید با رمز فعلی متفاوت باشد.",
         )
 
+
+    password_error = validate_password(data.new_password)
+
+    if password_error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=password_error,
+        )
+
     try:
         change_user_password(
             db=db,
@@ -173,6 +192,16 @@ def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="رمز عبور جدید و تکرار آن یکسان نیستند.",
         )
+
+
+    password_error = validate_password(data.new_password)
+
+    if password_error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=password_error,
+        )
+
 
     try:
         reset_user_password(
