@@ -22,6 +22,7 @@ from app.services.auth import (
     register_user,
     reset_user_password,
     update_user_profile,
+    delete_user_account,
 )
 
 
@@ -246,3 +247,20 @@ def reset_password(
     return {
         "message": "رمز عبور با موفقیت تغییر کرد."
     }
+
+
+
+@router.delete(
+    "/account",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    delete_user_account(
+        db=db,
+        user=current_user,
+    )
+
+    return None

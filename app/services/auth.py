@@ -243,3 +243,11 @@ def update_user_profile(
     db.refresh(user)
 
     return user
+
+
+def delete_user_account(
+    db: Session,
+    user: User,
+) -> None:
+    db.delete(user)
+    db.commit()
