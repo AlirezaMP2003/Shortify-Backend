@@ -1,7 +1,6 @@
 import jwt
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -9,11 +8,8 @@ from app.db.session import get_db
 from app.models import User
 
 
-security = HTTPBearer()
-
-
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    access_token: str | None = Cookie(default=None),
     db: Session = Depends(get_db),
 ) -> User:
 
@@ -25,11 +21,12 @@ def get_current_user(
         },
     )
 
-    token = credentials.credentials
+    if not access_token:
+        raise credentials_exception
 
     try:
         payload = jwt.decode(
-            token,
+            access_token,
             settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm],
         )
