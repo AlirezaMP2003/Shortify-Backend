@@ -194,7 +194,7 @@ def forgot_password(
     data: ForgotPasswordRequest,
     db: Session = Depends(get_db),
 ):
-    create_password_reset_request(
+    reset_code = create_password_reset_request(
         db=db,
         email=data.email,
     )
@@ -203,7 +203,8 @@ def forgot_password(
         "message": (
             "اگر این ایمیل در سیستم ثبت شده باشد، "
             "کد بازیابی تولید شده است."
-        )
+        ),
+        "reset_code" : reset_code,
     }
 
 

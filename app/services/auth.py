@@ -144,6 +144,8 @@ def create_password_reset_request(
     print("=" * 50)
     print()
 
+    return reset_code
+
 
 def reset_user_password(
     db: Session,
